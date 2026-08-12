@@ -440,6 +440,7 @@ jobs:
             !nightly-out/*.sig
 
       - name: upload artifacts + fragment to R2
+        if: false
         shell: bash
         run: |
           set -euo pipefail
@@ -451,9 +452,18 @@ jobs:
           # Per-leg manifest fragment.
           rclone copy "$out/frag" "$base/manifest-fragments/"
 
+      # Custom: upload the staged build output as a GitHub Actions artifact so
+      # the built Windows installer can be downloaded without R2 secrets.
+      - name: upload artifact to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: readest-${{ matrix.config.release }}-${{ matrix.config.arch }}
+          path: nightly-out
+          if-no-files-found: error
+
   assemble-manifest:
     needs: [compute-version, build]
-    if: ${{ always() && needs.build.result != 'cancelled' }}
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
