@@ -152,6 +152,7 @@ jobs:
           cp .env.local apps/readest-app/.env.local
 
       - name: install rclone
+        if: false
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
@@ -163,6 +164,7 @@ jobs:
           fi
 
       - name: configure rclone
+        if: false
         shell: bash
         run: |
           mkdir -p ~/.config/rclone
