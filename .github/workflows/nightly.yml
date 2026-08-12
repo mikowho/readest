@@ -316,7 +316,7 @@ jobs:
           nsis_src="target/${rust_target}/release/bundle/nsis/${nsis_name}"
           mkdir -p nsis-staged
           cp "$nsis_src" "nsis-staged/${nsis_name}"
-          cp "${nsis_src}.sig" "nsis-staged/${nsis_name}.sig"
+          if [ -f "${nsis_src}.sig" ]; then cp "${nsis_src}.sig" "nsis-staged/${nsis_name}.sig"; fi
 
           pushd apps/readest-app/
           echo "NEXT_PUBLIC_PORTABLE_APP=true" >> .env.local
@@ -332,9 +332,11 @@ jobs:
           # Browsers on Windows refuse to download zips containing exe files, so
           # ship the exe directly (matches release.yml).
           cp "$exe_file" "$bin_file"
-          pushd apps/readest-app/
-          pnpm tauri signer sign "../../$bin_file"
-          popd
+          if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            pushd apps/readest-app/
+            pnpm tauri signer sign "../../$bin_file"
+            popd
+          fi
 
       # ───────────────── COLLECT ARTIFACTS + BUILD FRAGMENT ─────────────────
       # Each leg copies its updater artifacts (+ .sig) into ./nightly-out and
@@ -365,13 +367,16 @@ jobs:
           echo '{"platforms":{}}' > "$frag"
           add_entry() {
             local src="$1"; local fname="$2"; local key="$3"
-            if [ ! -f "$src" ] || [ ! -f "${src}.sig" ]; then
-              echo "::error::missing artifact or signature for $key: $src"
+            if [ ! -f "$src" ]; then
+              echo "::error::missing artifact for $key: $src"
               exit 1
             fi
             cp "$src" "$out/$fname"
-            cp "${src}.sig" "$out/${fname}.sig"
-            local sig; sig=$(cat "${src}.sig")
+            local sig=""
+            if [ -f "${src}.sig" ]; then
+              cp "${src}.sig" "$out/${fname}.sig"
+              sig=$(cat "${src}.sig")
+            fi
             local url="${base_url}/${fname}"
             jq --arg k "$key" --arg sig "$sig" --arg url "$url" \
               '.platforms[$k] = {signature: $sig, url: $url}' "$frag" > "$frag.tmp" && mv "$frag.tmp" "$frag"
