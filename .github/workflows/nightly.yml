@@ -52,7 +52,7 @@ jobs:
         config:
           - os: ubuntu-latest
             release: android
-            rust_target: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+            rust_target: aarch64-linux-android,x86_64-linux-android
           - os: ubuntu-22.04
             release: linux
             arch: x86_64
@@ -176,7 +176,7 @@ jobs:
       - name: build and sign Android apks
         if: matrix.config.release == 'android'
         shell: bash
-        timeout-minutes: 55
+        timeout-minutes: 120
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
