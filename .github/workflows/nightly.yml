@@ -197,6 +197,16 @@ jobs:
             base64 -d <<< "${{ secrets.ANDROID_KEY_BASE64 }}" > $RUNNER_TEMP/keystore.jks
             echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
             popd
+          else
+            # mikowho fork: no signing secrets -> generate a throwaway debug keystore
+            # so the release build can sign the APK.
+            pushd src-tauri/gen/android
+            keytool -genkeypair -v -keystore $RUNNER_TEMP/keystore.jks -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=CI,O=CI,C=US" 2>/dev/null
+            echo "keyAlias=androiddebugkey" > keystore.properties
+            echo "storePassword=android" >> keystore.properties
+            echo "password=android" >> keystore.properties
+            echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+            popd
           fi
 
           apk_path=src-tauri/gen/android/app/build/outputs/apk/universal/release
@@ -206,8 +216,10 @@ jobs:
           cp ${apk_path}/app-universal-release.apk $universal_apk
           pnpm tauri android build -t aarch64
           cp ${apk_path}/app-universal-release.apk $arm64_apk
-          pnpm tauri signer sign $universal_apk
-          pnpm tauri signer sign $arm64_apk
+          if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            pnpm tauri signer sign $universal_apk
+            pnpm tauri signer sign $arm64_apk
+          fi
 
       # ──────────────────────────── DESKTOP ────────────────────────────
       # Linux uses the truly-portable AppImage tauri CLI fork (mirrors
